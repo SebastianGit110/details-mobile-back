@@ -1,0 +1,129 @@
+import { pool } from "../db.js";
+
+// Obtener todos los movimientos
+export const getMovements = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        m.id_movimiento,
+        c.nombre AS client,
+        m.id_factura,
+        m.precio_total_linea,
+        m.cantidad,
+        m.id_producto,
+        p.nombre AS product
+      FROM Movimientos m
+      JOIN Productos p ON m.id_producto = p.id_producto
+      INNER JOIN Clientes c ON m.id_cliente = c.id_cliente
+    `);
+
+    res.json(rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error al obtener los movimientos" });
+  }
+};
+
+// Crear movimiento
+export const createMovement = async (req, res) => {
+  try {
+    const {
+      id_factura,
+      id_producto,
+      cantidad,
+      precio_unitario_facturado,
+      precio_total_linea,
+    } = req.body;
+
+    if (
+      !id_factura ||
+      !id_producto ||
+      !cantidad ||
+      !precio_unitario_facturado ||
+      !precio_total_linea
+    ) {
+      return res.status(400).json({ message: "Faltan datos obligatorios" });
+    }
+
+    const [result] = await pool.query(
+      `INSERT INTO Movimientos 
+       (id_factura, id_producto, cantidad, precio_unitario_facturado, precio_total_linea)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        id_factura,
+        id_producto,
+        cantidad,
+        precio_unitario_facturado,
+        precio_total_linea,
+      ]
+    );
+
+    res.status(201).json({
+      message: "Movimiento creado correctamente",
+      movimiento: {
+        id_movimiento: result.insertId,
+        id_factura,
+        id_producto,
+        cantidad,
+        precio_unitario_facturado,
+        precio_total_linea,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error al crear el movimiento" });
+  }
+};
+
+// Actualizar movimiento
+export const updateMovement = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      id_factura,
+      id_producto,
+      cantidad,
+      precio_unitario_facturado,
+      precio_total_linea,
+    } = req.body;
+
+    const [result] = await pool.query(
+      `UPDATE Movimientos
+       SET id_factura = ?, id_producto = ?, cantidad = ?, 
+           precio_unitario_facturado = ?, precio_total_linea = ?
+       WHERE id_movimiento = ?`,
+      [
+        id_factura,
+        id_producto,
+        cantidad,
+        precio_unitario_facturado,
+        precio_total_linea,
+        id,
+      ]
+    );
+
+    if (result.affectedRows === 0)
+      return res.status(404).json({ message: "Movimiento no encontrado" });
+
+    res.json({ message: "Movimiento actualizado correctamente" });
+  } catch (error) {
+    res.status(500).json({ message: "Error al actualizar el movimiento" });
+  }
+};
+
+// Eliminar movimiento
+export const deleteMovement = async (req, res) => {
+  try {
+    const [result] = await pool.query(
+      "DELETE FROM Movimientos WHERE id_movimiento = ?",
+      [req.params.id]
+    );
+
+    if (result.affectedRows === 0)
+      return res.status(404).json({ message: "Movimiento no encontrado" });
+
+    res.json({ message: "Movimiento eliminado correctamente" });
+  } catch (error) {
+    res.status(500).json({ message: "Error al eliminar el movimiento" });
+  }
+};
