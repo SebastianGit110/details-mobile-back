@@ -6,7 +6,7 @@ import invoicesRoutes from "./routes/invoices.routes.js";
 import movementsRoutes from "./routes/movements.routes.js";
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
