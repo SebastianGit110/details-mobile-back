@@ -3,7 +3,7 @@ import { pool } from "../db.js";
 // Obtener todos los clientes
 export const getClientes = async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM Clientes");
+    const { rows } = await pool.query("SELECT * FROM Clientes");
     res.json(rows);
   } catch (error) {
     res.status(500).json({ message: "Error al obtener los clientes", error });
@@ -14,11 +14,11 @@ export const getClientes = async (req, res) => {
 export const createCliente = async (req, res) => {
   try {
     const { nombre, direccion, telefono } = req.body;
-    const [result] = await pool.query(
-      "INSERT INTO Clientes (nombre, direccion, telefono) VALUES (?, ?, ?)",
+    const { rows } = await pool.query(
+      "INSERT INTO Clientes (nombre, direccion, telefono) VALUES ($1, $2, $3) RETURNING id_cliente",
       [nombre, direccion, telefono]
     );
-    res.status(201).json({ id: result.insertId, nombre, direccion, telefono });
+    res.status(201).json({ id: rows[0].id_cliente, nombre, direccion, telefono });
   } catch (error) {
     res.status(500).json({ message: "Error al crear cliente", error });
   }
@@ -30,12 +30,12 @@ export const updateCliente = async (req, res) => {
     const { id } = req.params;
     const { nombre, direccion, telefono } = req.body;
 
-    const [result] = await pool.query(
-      "UPDATE Clientes SET nombre=?, direccion=?, telefono=? WHERE id_cliente=?",
+    const result = await pool.query(
+      "UPDATE Clientes SET nombre=$1, direccion=$2, telefono=$3 WHERE id_cliente=$4",
       [nombre, direccion, telefono, id]
     );
 
-    if (result.affectedRows === 0)
+    if (result.rowCount === 0)
       return res.status(404).json({ message: "Cliente no encontrado" });
 
     res.json({ message: "Cliente actualizado correctamente" });
@@ -48,12 +48,12 @@ export const updateCliente = async (req, res) => {
 export const deleteCliente = async (req, res) => {
   try {
     const { id } = req.params;
-    const [result] = await pool.query(
-      "DELETE FROM Clientes WHERE id_cliente = ?",
+    const result = await pool.query(
+      "DELETE FROM Clientes WHERE id_cliente = $1",
       [id]
     );
 
-    if (result.affectedRows === 0)
+    if (result.rowCount === 0)
       return res.status(404).json({ message: "Cliente no encontrado" });
 
     res.json({ message: "Cliente eliminado correctamente" });

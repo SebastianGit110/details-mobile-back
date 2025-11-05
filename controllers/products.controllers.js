@@ -3,7 +3,7 @@ import { pool } from "../db.js";
 // Obtener todos los productos
 export const getProductos = async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM Productos");
+    const { rows } = await pool.query("SELECT * FROM Productos");
     res.json(rows);
   } catch (error) {
     res.status(500).json({ message: "Error al obtener productos", error });
@@ -12,7 +12,7 @@ export const getProductos = async (req, res) => {
 
 export const getProductosA = async (req, res) => {
   try {
-    const [rows] = await pool.query(`
+    const { rows } = await pool.query(`
       SELECT 
         id_producto AS id,
         nombre AS name,
@@ -32,8 +32,8 @@ export const updateProducts = async (req, res) => {
   try {
     const { newProducts, total, cliente, id_factura } = req.body;
 
-    const [rows] = await pool.query(
-      "SELECT id_cliente FROM Clientes WHERE nombre = ? LIMIT 1",
+    const { rows } = await pool.query(
+      "SELECT id_cliente FROM Clientes WHERE nombre = $1 LIMIT 1",
       [cliente]
     );
 
@@ -49,21 +49,21 @@ export const updateProducts = async (req, res) => {
 
     console.log("newProducts", newProducts);
 
-    Promise.all(
+    await Promise.all(
       newProducts.map(async (newProd) => {
-        const [result] = await pool.query(
-          "UPDATE Productos SET stock=? WHERE id_producto=?",
+        await pool.query(
+          "UPDATE Productos SET stock=$1 WHERE id_producto=$2",
           [newProd.quantity - newProd.cantidadTotal, newProd.id]
         );
       })
     );
 
-    Promise.all(
+    await Promise.all(
       newProducts.map(async (newProd) => {
-        const [result] = await pool.query(
+        await pool.query(
           `INSERT INTO Movimientos 
        (id_factura, id_cliente, id_producto, cantidad, precio_unitario_facturado, precio_total_linea)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6)`,
           [
             id_factura,
             id_cliente,
@@ -75,6 +75,8 @@ export const updateProducts = async (req, res) => {
         );
       })
     );
+
+    res.json({ message: "Productos actualizados correctamente" });
   } catch (error) {
     console.error("Error al actualizar productos:", error);
     res.status(500).json({ message: "Error al actualizar productos", error });
@@ -86,13 +88,13 @@ export const createProducto = async (req, res) => {
   try {
     console.log(req.body);
     const { nombre, precio_unitario, stock, id_producto } = req.body;
-    const [result] = await pool.query(
-      "INSERT INTO Productos (id_producto, nombre, precio_unitario, stock) VALUES (?, ?, ?, ?)",
+    const { rows } = await pool.query(
+      "INSERT INTO Productos (id_producto, nombre, precio_unitario, stock) VALUES ($1, $2, $3, $4) RETURNING id_producto",
       [id_producto, nombre, precio_unitario, stock]
     );
     res
       .status(201)
-      .json({ id: result.insertId, nombre, precio_unitario, stock });
+      .json({ id: rows[0].id_producto, nombre, precio_unitario, stock });
   } catch (error) {
     res.status(500).json({ message: "Error al crear producto", error });
   }
@@ -104,12 +106,12 @@ export const updateProducto = async (req, res) => {
     const { id } = req.params;
     const { nombre, precio_unitario, stock } = req.body;
 
-    const [result] = await pool.query(
-      "UPDATE Productos SET nombre=?, precio_unitario=?, stock=? WHERE id_producto=?",
+    const result = await pool.query(
+      "UPDATE Productos SET nombre=$1, precio_unitario=$2, stock=$3 WHERE id_producto=$4",
       [nombre, precio_unitario, stock, id]
     );
 
-    if (result.affectedRows === 0)
+    if (result.rowCount === 0)
       return res.status(404).json({ message: "Producto no encontrado" });
 
     res.json({ message: "Producto actualizado correctamente" });
@@ -122,14 +124,14 @@ export const updateProducto = async (req, res) => {
 export const deleteProducto = async (req, res) => {
   try {
     const { id } = req.params;
-    const [result] = await pool.query(
-      "DELETE FROM Productos WHERE id_producto = ?",
+    const result = await pool.query(
+      "DELETE FROM Productos WHERE id_producto = $1",
       [id]
     );
 
     console.log("result", result);
 
-    if (result.affectedRows === 0)
+    if (result.rowCount === 0)
       return res.status(404).json({ message: "Producto no encontrado" });
 
     res.json({ message: "Producto eliminado correctamente" });

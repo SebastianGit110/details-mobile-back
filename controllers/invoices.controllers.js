@@ -3,7 +3,7 @@ import { pool } from "../db.js";
 // Obtener todas las facturas
 export const getInvoices = async (req, res) => {
   try {
-    const [rows] = await pool.query(`
+    const { rows } = await pool.query(`
       SELECT 
         f.id_factura AS id,
         c.nombre AS cliente,
@@ -28,8 +28,8 @@ export const createInvoice = async (req, res) => {
 
     console.log(req.body);
 
-    const [rows] = await pool.query(
-      "SELECT id_cliente FROM Clientes WHERE nombre = ? LIMIT 1",
+    const { rows } = await pool.query(
+      "SELECT id_cliente FROM Clientes WHERE nombre = $1 LIMIT 1",
       [cliente]
     );
 
@@ -47,14 +47,14 @@ export const createInvoice = async (req, res) => {
       return res.status(400).json({ message: "Faltan datos obligatorios" });
     }
 
-    const [result] = await pool.query(
-      "INSERT INTO Facturas (id_cliente, fecha, total, products) VALUES (?, ?, ?, ?)",
+    const { rows: resultRows } = await pool.query(
+      "INSERT INTO Facturas (id_cliente, fecha, total, products) VALUES ($1, $2, $3, $4) RETURNING id_factura",
       [id_cliente, fecha, total, products]
     );
 
     res.status(201).json({
       message: "Factura creada correctamente",
-      factura: { id_factura: result.insertId, id_cliente, fecha, total },
+      factura: { id_factura: resultRows[0].id_factura, id_cliente, fecha, total },
     });
   } catch (error) {
     console.error(error);
@@ -68,12 +68,12 @@ export const updateInvoice = async (req, res) => {
     const { id } = req.params;
     const { id_cliente, fecha, total } = req.body;
 
-    const [result] = await pool.query(
-      "UPDATE Facturas SET id_cliente = ?, fecha = ?, total = ? WHERE id_factura = ?",
+    const result = await pool.query(
+      "UPDATE Facturas SET id_cliente = $1, fecha = $2, total = $3 WHERE id_factura = $4",
       [id_cliente, fecha, total, id]
     );
 
-    if (result.affectedRows === 0)
+    if (result.rowCount === 0)
       return res.status(404).json({ message: "Factura no encontrada" });
 
     res.json({ message: "Factura actualizada correctamente" });
@@ -85,12 +85,12 @@ export const updateInvoice = async (req, res) => {
 // Eliminar factura
 export const deleteInvoice = async (req, res) => {
   try {
-    const [result] = await pool.query(
-      "DELETE FROM Facturas WHERE id_factura = ?",
+    const result = await pool.query(
+      "DELETE FROM Facturas WHERE id_factura = $1",
       [req.params.id]
     );
 
-    if (result.affectedRows === 0)
+    if (result.rowCount === 0)
       return res.status(404).json({ message: "Factura no encontrada" });
 
     res.json({ message: "Factura eliminada correctamente" });

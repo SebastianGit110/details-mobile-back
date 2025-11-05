@@ -3,7 +3,7 @@ import { pool } from "../db.js";
 // Obtener todos los movimientos
 export const getMovements = async (req, res) => {
   try {
-    const [rows] = await pool.query(`
+    const { rows } = await pool.query(`
       SELECT 
         m.id_movimiento,
         c.nombre AS client,
@@ -45,10 +45,10 @@ export const createMovement = async (req, res) => {
       return res.status(400).json({ message: "Faltan datos obligatorios" });
     }
 
-    const [result] = await pool.query(
+    const { rows } = await pool.query(
       `INSERT INTO Movimientos 
        (id_factura, id_producto, cantidad, precio_unitario_facturado, precio_total_linea)
-       VALUES (?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5) RETURNING id_movimiento`,
       [
         id_factura,
         id_producto,
@@ -61,7 +61,7 @@ export const createMovement = async (req, res) => {
     res.status(201).json({
       message: "Movimiento creado correctamente",
       movimiento: {
-        id_movimiento: result.insertId,
+        id_movimiento: rows[0].id_movimiento,
         id_factura,
         id_producto,
         cantidad,
@@ -87,11 +87,11 @@ export const updateMovement = async (req, res) => {
       precio_total_linea,
     } = req.body;
 
-    const [result] = await pool.query(
+    const result = await pool.query(
       `UPDATE Movimientos
-       SET id_factura = ?, id_producto = ?, cantidad = ?, 
-           precio_unitario_facturado = ?, precio_total_linea = ?
-       WHERE id_movimiento = ?`,
+       SET id_factura = $1, id_producto = $2, cantidad = $3, 
+           precio_unitario_facturado = $4, precio_total_linea = $5
+       WHERE id_movimiento = $6`,
       [
         id_factura,
         id_producto,
@@ -102,7 +102,7 @@ export const updateMovement = async (req, res) => {
       ]
     );
 
-    if (result.affectedRows === 0)
+    if (result.rowCount === 0)
       return res.status(404).json({ message: "Movimiento no encontrado" });
 
     res.json({ message: "Movimiento actualizado correctamente" });
@@ -114,12 +114,12 @@ export const updateMovement = async (req, res) => {
 // Eliminar movimiento
 export const deleteMovement = async (req, res) => {
   try {
-    const [result] = await pool.query(
-      "DELETE FROM Movimientos WHERE id_movimiento = ?",
+    const result = await pool.query(
+      "DELETE FROM Movimientos WHERE id_movimiento = $1",
       [req.params.id]
     );
 
-    if (result.affectedRows === 0)
+    if (result.rowCount === 0)
       return res.status(404).json({ message: "Movimiento no encontrado" });
 
     res.json({ message: "Movimiento eliminado correctamente" });
