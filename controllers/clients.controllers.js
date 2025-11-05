@@ -4,9 +4,14 @@ import { pool } from "../db.js";
 export const getClientes = async (req, res) => {
   try {
     const { rows } = await pool.query("SELECT * FROM Clientes");
+    console.log(`📋 Clientes obtenidos: ${rows.length}`);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ message: "Error al obtener los clientes", error });
+    console.error("❌ Error al obtener clientes:", error);
+    res.status(500).json({ 
+      message: "Error al obtener los clientes", 
+      error: error.message 
+    });
   }
 };
 
@@ -14,13 +19,28 @@ export const getClientes = async (req, res) => {
 export const createCliente = async (req, res) => {
   try {
     const { nombre, direccion, telefono } = req.body;
+    
+    console.log("📝 Intentando crear cliente:", { nombre, direccion, telefono });
+    
     const { rows } = await pool.query(
       "INSERT INTO Clientes (nombre, direccion, telefono) VALUES ($1, $2, $3) RETURNING id_cliente",
       [nombre, direccion, telefono]
     );
+    
+    console.log("✅ Cliente creado exitosamente:", rows[0]);
     res.status(201).json({ id: rows[0].id_cliente, nombre, direccion, telefono });
   } catch (error) {
-    res.status(500).json({ message: "Error al crear cliente", error });
+    console.error("❌ Error al crear cliente:", error);
+    console.error("Detalles del error:", {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+    });
+    res.status(500).json({ 
+      message: "Error al crear cliente", 
+      error: error.message,
+      detail: error.detail 
+    });
   }
 };
 
