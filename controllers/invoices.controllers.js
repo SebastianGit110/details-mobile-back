@@ -4,7 +4,7 @@ import { pool } from "../db.js";
 export const getInvoices = async (req, res) => {
   try {
     const { rows } = await pool.query(`
-      SELECT 
+      SELECT
         f.id_factura AS id,
         c.nombre AS cliente,
         f.fecha AS fecha,
@@ -14,7 +14,19 @@ export const getInvoices = async (req, res) => {
       INNER JOIN Clientes c ON f.id_cliente = c.id_cliente
     `);
 
-    res.json(rows);
+    // Incluir información del dispositivo y permisos si está disponible
+    const response = {
+      invoices: rows,
+      device: req.device || null,
+      permissions: req.device?.permissions || {
+        canCreate: false,
+        canEdit: false,
+        canDelete: false,
+        canView: true
+      }
+    };
+
+    res.json(response);
   } catch (error) {
     console.error("Error al obtener las facturas:", error);
     res.status(500).json({ message: "Error al obtener las facturas" });
@@ -89,7 +101,7 @@ export const getInvoiceById = async (req, res) => {
 
     // Obtener información de la factura
     const [invoiceRows] = await pool.query(`
-      SELECT 
+      SELECT
         f.id_factura AS id,
         c.nombre AS cliente,
         f.fecha AS fecha,
@@ -106,7 +118,7 @@ export const getInvoiceById = async (req, res) => {
 
     // Obtener productos de la factura desde Movimientos
     const [productsRows] = await pool.query(`
-      SELECT 
+      SELECT
         m.id_producto AS id,
         p.nombre AS name,
         m.cantidad AS quantity,
@@ -122,7 +134,19 @@ export const getInvoiceById = async (req, res) => {
       products: productsRows
     };
 
-    res.json(invoice);
+    // Incluir información del dispositivo y permisos
+    const response = {
+      invoice: invoice,
+      device: req.device || null,
+      permissions: req.device?.permissions || {
+        canCreate: false,
+        canEdit: false,
+        canDelete: false,
+        canView: true
+      }
+    };
+
+    res.json(response);
   } catch (error) {
     console.error("Error al obtener la factura:", error);
     res.status(500).json({ message: "Error al obtener la factura" });
